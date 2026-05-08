@@ -1,8 +1,11 @@
-import { supabase } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase-server";
 
 // GET → fetch all courses
 export async function GET() {
   try {
+    // Initialize the server-side client
+    const supabase = await createSupabaseServer();
+
     const { data, error } = await supabase
       .from("courses")
       .select("*")
@@ -27,8 +30,12 @@ export async function GET() {
 // POST → create new course
 export async function POST(req: Request) {
   try {
+    // Initialize the server-side client
+    const supabase = await createSupabaseServer();
+
     const body = await req.json();
 
+    // Basic Validation
     if (!body.title || body.title.trim() === "") {
       return Response.json(
         { error: "Title is required" },
@@ -36,9 +43,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Include the thumbnail if it exists in the request body
     const { data, error } = await supabase
       .from("courses")
-      .insert([{ title: body.title }])
+      .insert([
+        { 
+          title: body.title,
+          thumbnail: body.thumbnail || null // Support for the Day 21 thumbnail feature
+        }
+      ])
       .select()
       .single();
 

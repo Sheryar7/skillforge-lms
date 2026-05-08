@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase-server";
 
-// GET → fetch all users
+// GET → Fetch all users from database
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServer();
 
     const { data, error } = await supabase
       .from("users")
@@ -11,7 +11,10 @@ export async function GET() {
       .order("id", { ascending: true });
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
     return Response.json(data);
@@ -23,13 +26,14 @@ export async function GET() {
   }
 }
 
-// POST → create new user
+// POST → Create a new user
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient(); // ✅ FIXED
+    const supabase = await createSupabaseServer();
 
     const body = await req.json();
 
+    // Validate input
     if (!body.email || body.email.trim() === "") {
       return Response.json(
         { error: "Email is required" },
@@ -44,7 +48,10 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
     return Response.json(data, { status: 201 });

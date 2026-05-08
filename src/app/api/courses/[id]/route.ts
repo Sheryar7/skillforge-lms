@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase-server";
 
 // GET → fetch single course
 export async function GET(
@@ -6,6 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> } // Updated to Promise
 ) {
   try {
+    const supabase = await createSupabaseServer();
     const { id } = await params; // Unwrapping params
     const { data, error } = await supabase
       .from("courses")
@@ -35,6 +36,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> } // Updated to Promise
 ) {
   try {
+    const supabase = await createSupabaseServer();
     const body = await req.json();
     const { id } = await params; // Unwrapped params
 
@@ -74,6 +76,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> } // Updated to Promise
 ) {
   try {
+    const supabase = await createSupabaseServer();
     const { id } = await params; // Unwrapped params
     const { error } = await supabase
       .from("courses")

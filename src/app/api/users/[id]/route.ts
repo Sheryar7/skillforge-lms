@@ -1,14 +1,24 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase-server";
 
-// GET → single user
+/**
+ * GET → Fetch single user by ID
+ */
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient(); 
+    const supabase = await createSupabaseServer();
 
-    const { id } = params;
+    // Fetch params (required in Next.js 16)
+    const { id } = await params;
+
+    if (!id) {
+      return Response.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
     const { data, error } = await supabase
       .from("users")
@@ -17,7 +27,10 @@ export async function GET(
       .single();
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 404 });
+      return Response.json(
+        { error: error.message },
+        { status: 404 }
+      );
     }
 
     return Response.json(data);
@@ -29,16 +42,25 @@ export async function GET(
   }
 }
 
-// PUT → update user
+/**
+ * PUT → Update user by ID
+ */
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient(); 
+    const supabase = await createSupabaseServer();
 
     const body = await req.json();
-    const { id } = params;
+    const { id } = await params;
+
+    if (!id) {
+      return Response.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
     if (!body.email || body.email.trim() === "") {
       return Response.json(
@@ -55,7 +77,10 @@ export async function PUT(
       .single();
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
     return Response.json(data);
@@ -67,15 +92,24 @@ export async function PUT(
   }
 }
 
-// DELETE → remove user
+/**
+ * DELETE → Remove user by ID
+ */
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient(); 
+    const supabase = await createSupabaseServer();
 
-    const { id } = params;
+    const { id } = await params;
+
+    if (!id) {
+      return Response.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
     const { error } = await supabase
       .from("users")
@@ -83,7 +117,10 @@ export async function DELETE(
       .eq("id", id);
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
     return Response.json({ success: true });
