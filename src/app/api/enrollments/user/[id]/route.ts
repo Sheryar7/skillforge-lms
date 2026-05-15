@@ -1,5 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase-server";
 
+// GET → Fetch enrolled courses for a user
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -9,6 +10,7 @@ export async function GET(
 
     const { id } = await params;
 
+    // Validate user ID
     if (!id) {
       return Response.json(
         { error: "User ID is required" },
@@ -16,11 +18,12 @@ export async function GET(
       );
     }
 
-    // First fetch enrollments
-    const { data: enrollments, error: enrollError } = await supabase
-      .from("enrollments")
-      .select("*")
-      .eq("user_id", id);
+    // Fetch enrollments
+    const { data: enrollments, error: enrollError } =
+      await supabase
+        .from("enrollments")
+        .select("*")
+        .eq("user_id", id);
 
     if (enrollError) {
       return Response.json(
@@ -29,21 +32,22 @@ export async function GET(
       );
     }
 
-    // If no enrollments
+    // No enrollments found
     if (!enrollments || enrollments.length === 0) {
       return Response.json([]);
     }
 
-    // Get all course IDs
+    // Extract course IDs
     const courseIds = enrollments.map(
       (item) => item.course_id
     );
 
-    // Fetch courses separately
-    const { data: courses, error: courseError } = await supabase
-      .from("courses")
-      .select("*")
-      .in("id", courseIds);
+    // Fetch courses
+    const { data: courses, error: courseError } =
+      await supabase
+        .from("courses")
+        .select("*")
+        .in("id", courseIds);
 
     if (courseError) {
       return Response.json(

@@ -1,130 +1,103 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  Settings,
-  GraduationCap,
-  BarChart3,
+    LayoutDashboard,
+    BookOpen,
+    Users,
+    Settings,
+    GraduationCap,
+    BarChart3,
 } from "lucide-react";
 
-export default function Sidebar() {
-  return (
-    <aside className="hidden md:flex w-72 min-h-screen bg-white border-r border-gray-200 flex-col justify-between">
+interface SidebarProps {
+    userRole: string;
+}
 
-      {/* TOP */}
-      <div>
+export default function Sidebar({ userRole }: SidebarProps) {
+    const pathname = usePathname();
+    const isActive = (path: string) => pathname === path;
 
-        {/* LOGO */}
-        <div className="h-20 flex items-center px-8 border-b border-gray-100">
-          <div className="flex items-center gap-3">
+    const menuItems = [
+        {
+            name: "Dashboard",
+            href: "/dashboard",
+            icon: LayoutDashboard,
+            roles: ["student", "instructor"]
+        },
+        {
+            name: "Courses",
+            href: "/dashboard/courses",
+            icon: BookOpen,
+            roles: ["student", "instructor"]
+        },
+        {
+            name: "Students",
+            href: "/dashboard/students",
+            icon: GraduationCap,
+            roles: ["instructor"]
+        },
+        {
+            name: "Users",
+            href: "/dashboard/users",
+            icon: Users,
+            roles: ["instructor"]
+        },
+        {
+            name: "Analytics",
+            href: "/dashboard/analytics",
+            icon: BarChart3,
+            roles: ["instructor"]
+        },
+        {
+            name: "Settings",
+            href: "/dashboard/settings",
+            icon: Settings,
+            roles: ["student", "instructor"]
+        },
+    ];
 
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-              S
-            </div>
+    // Filter based on user role (case-insensitive)
+    const filteredMenu = menuItems.filter((item) =>
+        item.roles.some(role => role.toLowerCase() === (userRole?.toLowerCase() || "student"))
+    );
 
+    return (
+        <aside className="hidden md:flex w-72 h-full bg-white border-r border-gray-200 flex-col justify-between shrink-0">
             <div>
-              <h1 className="text-lg font-bold text-gray-800">
-                Sherry LMS
-              </h1>
+                <div className="px-5 py-8">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-6 px-3 font-bold">
+                        {userRole?.toLowerCase() === "instructor" ? "Instructor Panel" : "Student Menu"}
+                    </p>
 
-              <p className="text-xs text-gray-400">
-                Learning Platform
-              </p>
+                    <nav className="space-y-2">
+                        {filteredMenu.map((item) => {
+                            const active = isActive(item.href);
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-medium transition-all duration-200 ${
+                                        active
+                                            ? "bg-violet-50 text-violet-700 shadow-sm"
+                                            : "text-gray-600 hover:bg-gray-100"
+                                    }`}
+                                >
+                                    <item.icon size={20} className={active ? "text-violet-700" : "text-gray-500"} />
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
             </div>
 
-          </div>
-        </div>
-
-        {/* MENU */}
-        <div className="px-5 py-6">
-
-          <p className="text-xs uppercase tracking-wider text-gray-400 mb-4 px-3">
-            Main Menu
-          </p>
-
-          <nav className="space-y-2">
-
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-violet-50 text-violet-700 font-medium shadow-sm"
-            >
-              <LayoutDashboard size={20} />
-              Dashboard
-            </Link>
-
-            <Link
-              href="/dashboard/courses"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-600 hover:bg-gray-100 transition"
-            >
-              <BookOpen size={20} />
-              Courses
-            </Link>
-
-            <Link
-              href="/dashboard/students"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-600 hover:bg-gray-100 transition"
-            >
-              <GraduationCap size={20} />
-              Students
-            </Link>
-
-            <Link
-              href="/dashboard/users"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-600 hover:bg-gray-100 transition"
-            >
-              <Users size={20} />
-              Users
-            </Link>
-
-            <Link
-              href="/dashboard/analytics"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-600 hover:bg-gray-100 transition"
-            >
-              <BarChart3 size={20} />
-              Analytics
-            </Link>
-
-            <Link
-              href="/dashboard/settings"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-600 hover:bg-gray-100 transition"
-            >
-              <Settings size={20} />
-              Settings
-            </Link>
-
-          </nav>
-        </div>
-      </div>
-
-      {/* BOTTOM CARD */}
-      <div className="p-5">
-
-        <div className="rounded-3xl bg-gradient-to-r from-cyan-400 to-blue-500 p-6 text-white shadow-xl">
-
-          <h3 className="font-semibold text-lg leading-snug">
-            Upgrade your LMS Experience
-          </h3>
-
-          <p className="text-sm mt-2 text-cyan-50">
-            Build modern learning systems with Next.js & Supabase.
-          </p>
-
-          <button className="mt-5 w-full bg-white text-blue-600 font-medium py-2 rounded-xl hover:bg-gray-100 transition">
-            Explore
-          </button>
-
-        </div>
-
-        {/* FOOTER */}
-        <div className="mt-6 text-center text-xs text-gray-400">
-          © 2026 Sherry LMS
-        </div>
-
-      </div>
-
-    </aside>
-  );
+            <div className="p-5 border-t border-gray-50">
+                <div className="text-center text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+                    © 2026 Sherry LMS
+                </div>
+            </div>
+        </aside>
+    );
 }

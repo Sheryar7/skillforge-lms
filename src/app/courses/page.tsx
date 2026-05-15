@@ -1,7 +1,7 @@
 
 import { getCourses } from "@/lib/api";
 import CourseCard from "@/components/CourseCard";
-import { Course } from "@/types/lms";
+import { Course } from "@/types/course";
 
 export default async function CoursesPage() {
   const courses: Course[] = await getCourses();
