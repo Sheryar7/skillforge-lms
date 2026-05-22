@@ -1,88 +1,209 @@
-import { createSupabaseServer } from "@/lib/supabase-server";
-import { approveEnrollment } from "./actions"; 
-import { CheckCircle, Clock } from "lucide-react";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function StudentsPage() {
-  const supabase = await createSupabaseServer();
-  
-  // 1. Get the current logged-in instructor
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase-client";
+import { enrollmentService, EnrollmentRequest } from "@/features/courses/services/enrollment.service";
+import { UserCheck, Users, Check, X, Clock, GraduationCap } from "lucide-react";
 
-  // 2. Fetch only requests belonging to THIS instructor
-  const { data: enrollments } = await supabase
-    .from("enrollment_requests") // Using the request table
-    .select(`
-      id,
-      student_id,
-      status,
-      profiles:student_id ( full_name, email ),
-      courses:course_id ( title )
-    `)
-    .eq('instructor_id', user.id) // Filtering by instructor
-    .order('created_at', { ascending: false });
+interface ActiveStudent {
+  id: string;
+  user_id?: string | null;
+  course_id?: string | null;
+  created_at?: string | null;
+  profiles?: {
+    full_name?: string | null;
+    email?: string | null;
+  };
+  courses?: {
+    title?: string | null;
+  };
+}
+
+export default function InstructorStudentsPage() {
+  const [activeTab, setActiveTab] = useState<"active" | "requests">("active");
+  const [instructorId, setInstructorId] = useState<string | null>(null);
+  const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
+  const [activeStudents, setActiveStudents] = useState<ActiveStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actioningId, setActioningId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const currentUserId = session.user.id;
+        setInstructorId(currentUserId);
+
+        const [pendingReqs, enrolledUsers] = await Promise.all([
+          enrollmentService.getPendingRequests(currentUserId),
+          enrollmentService.getActiveStudents(currentUserId),
+        ]);
+
+        setRequests(pendingReqs);
+        setActiveStudents(enrolledUsers);
+      } catch (err) {
+        console.error("Error aggregating student arrays:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  const handleDecision = async (req: EnrollmentRequest, status: "approved" | "rejected") => {
+    setActioningId(req.id);
+
+    try {
+      await enrollmentService.handleRequestDecision(req, status);
+      setRequests((prev) => prev.filter((item) => item.id !== req.id));
+
+      if (status === "approved" && instructorId) {
+        const updatedStudents = await enrollmentService.getActiveStudents(instructorId);
+        setActiveStudents(updatedStudents);
+      }
+    } catch (err) {
+      console.error("Action handler failed:", err);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-[50vh] w-full flex items-center justify-center text-slate-400 font-medium text-sm">
+        Loading student roster context...
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-8 max-w-[1400px] mx-auto p-2">
       <div>
-        <h1 className="text-4xl font-black text-slate-800">Enrollment Requests</h1>
-        <p className="text-slate-500 mt-2">Manage student access to your courses.</p>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Student Roster Management</h1>
+        <p className="text-slate-500 text-sm mt-1">Review active program participants and evaluate pending admission applications.</p>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="text-slate-400 text-xs uppercase tracking-[0.2em] border-b border-slate-50">
-              <th className="pb-6 px-4">Student</th>
-              <th className="pb-6 px-4">Course</th>
-              <th className="pb-6 px-4">Status</th>
-              <th className="pb-6 px-4">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {enrollments?.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-10 text-center text-slate-400 font-medium">
-                  No pending enrollment requests found.
-                </td>
-              </tr>
-            ) : (
-              enrollments?.map((enroll: any) => (
-                <tr key={enroll.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-6 px-4">
-                    <div className="font-bold text-slate-700">{enroll.profiles?.full_name || "Unknown Student"}</div>
-                    <div className="text-xs text-slate-400">{enroll.profiles?.email}</div>
-                  </td>
-                  <td className="py-6 px-4 font-medium text-slate-600">{enroll.courses?.title}</td>
-                  <td className="py-6 px-4">
-                    {enroll.status === "active" ? (
-                      <span className="flex items-center gap-1.5 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-bold w-fit">
-                        <CheckCircle size={14} /> Active
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-bold w-fit">
-                        <Clock size={14} /> Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-6 px-4">
-                    {enroll.status === "pending" && (
-                      <form action={async () => {
-                        "use server";
-                        await approveEnrollment(enroll.id);
-                      }}>
-                        <button className="bg-violet-600 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-violet-700 transition-all shadow-md shadow-violet-100">
-                          Approve
-                        </button>
-                      </form>
-                    )}
-                  </td>
+      <div className="flex flex-col gap-4 sm:flex-row border-b border-slate-100 pb-4 text-sm font-bold">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`pb-4 flex items-center gap-2 transition-all relative ${
+            activeTab === "active" ? "text-violet-600" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Users size={16} />
+          Active Students ({activeStudents.length})
+          {activeTab === "active" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("requests")}
+          className={`pb-4 flex items-center gap-2 transition-all relative ${
+            activeTab === "requests" ? "text-violet-600" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <UserCheck size={16} />
+          Enrollment Requests ({requests.length})
+          {requests.length > 0 && (
+            <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
+              {requests.length}
+            </span>
+          )}
+          {activeTab === "requests" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-violet-600 rounded-full" />}
+        </button>
+      </div>
+
+      <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden">
+        {activeTab === "active" ? (
+          activeStudents.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              <GraduationCap className="mx-auto mb-3 text-slate-300" size={36} />
+              No students are currently enrolled in your curriculum.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-400 text-[11px] font-black uppercase tracking-wider border-b border-slate-100">
+                    <th className="p-5">Student</th>
+                    <th className="p-5">Course</th>
+                    <th className="p-5">Joined</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm font-medium text-slate-700 divide-y divide-slate-50">
+                  {activeStudents.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition">
+                      <td className="p-5 font-bold text-slate-800">
+                        {item.profiles?.full_name || item.profiles?.email || `Student ID: ${item.user_id?.slice(0, 8)}...`}
+                      </td>
+                      <td className="p-5 text-slate-600">
+                        {item.courses?.title || `Course ID: ${item.course_id?.slice(0, 8)}...`}
+                      </td>
+                      <td className="p-5 text-slate-400 text-xs">
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleDateString(undefined, {
+                              dateStyle: "medium",
+                            })
+                          : "Unknown"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : requests.length === 0 ? (
+          <div className="text-center py-16 text-slate-400 text-sm">
+            <Clock className="mx-auto mb-3 text-slate-300" size={36} />
+            No pending approval requests at the moment.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-400 text-[11px] font-black uppercase tracking-wider border-b border-slate-100">
+                  <th className="p-5">Applicant</th>
+                  <th className="p-5">Target Course</th>
+                  <th className="p-5">Submitted</th>
+                  <th className="p-5 text-right">Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="text-sm font-medium text-slate-700 divide-y divide-slate-50">
+                {requests.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50/50 transition">
+                    <td className="p-5 font-bold text-slate-800">
+                      {req.profiles?.full_name || req.profiles?.email || `Student ID: ${req.student_id.slice(0, 8)}...`}
+                    </td>
+                    <td className="p-5 text-slate-600 font-semibold">
+                      {req.courses?.title || `Course ID: ${req.course_id.slice(0, 8)}...`}
+                    </td>
+                    <td className="p-5 text-slate-400 text-xs">
+                      {new Date(req.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                    </td>
+                    <td className="p-5 text-right space-x-2 shrink-0">
+                      <button
+                        disabled={actioningId === req.id}
+                        onClick={() => handleDecision(req, "approved")}
+                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition"
+                      >
+                        <Check size={14} /> Accept
+                      </button>
+                      <button
+                        disabled={actioningId === req.id}
+                        onClick={() => handleDecision(req, "rejected")}
+                        className="inline-flex items-center gap-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 text-slate-600 font-bold text-xs px-3 py-1.5 rounded-xl transition"
+                      >
+                        <X size={14} /> Deny
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

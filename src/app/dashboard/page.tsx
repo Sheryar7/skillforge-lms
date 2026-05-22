@@ -1,81 +1,44 @@
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { createSupabaseServer } from "@/lib/supabase-server";
-import StudentDashboard from "./StudentDashboard";
-import InstructorDashboard from "./InstructorDashboard";
+﻿"use client";
 
-export default async function Dashboard() {
-  const supabase = await createSupabaseServer();
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase-client";
+import Spinner from "@/shared/components/Spinner";
 
-  // 1. Get the current user
-  const { data: { user } } = await supabase.auth.getUser();
+export default function DashboardIndexPage() {
+  const router = useRouter();
 
-  if (!user) return null; // Safety check for ProtectedRoute
+  useEffect(() => {
+    const routeUserByRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-  // 2. Fetch profile - (Using maybeSingle to avoid 406 errors)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
 
-  const userRole = profile?.role || "student";
-  const fullName = profile?.full_name || "Sherry";
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
 
-  // 3. Logic for Instructor
-  let instructorStats = { totalStudents: 0, activeCourses: 0 };
-  let instructorCourses: any[] = []; // This will hold your list
-  
-  if (userRole === "instructor") {
-    // A. FETCH ALL COURSES OWNED BY THIS INSTRUCTOR
-    const { data: courses } = await supabase
-      .from("courses")
-      .select("*")
-      .eq("instructor_id", user.id)
-      .order("created_at", { ascending: true }); // Newest will be at the bottom
+      if (error) {
+        console.error("Unable to resolve role during redirect:", error);
+      }
 
-    instructorCourses = courses || [];
+      const userRole = profile?.role === "instructor" ? "instructor" : "student";
 
-    // B. STATS LOGIC
-    const { count: courseCount } = await supabase
-      .from("courses")
-      .select("*", { count: 'exact', head: true })
-      .eq("instructor_id", user.id);
-
-    const { data: enrollmentData } = await supabase
-      .from("enrollments")
-      .select("user_id, courses!inner(instructor_id)")
-      .eq("courses.instructor_id", user.id);
-
-    const uniqueStudents = new Set(enrollmentData?.map(e => e.user_id)).size;
-
-    instructorStats = {
-      totalStudents: uniqueStudents,
-      activeCourses: courseCount || 0
+      router.replace(userRole === "instructor" ? "/dashboard/instructor" : "/dashboard/student");
     };
-  }
 
-  // 4. Logic for Student Enrollments
-  const { data: enrollments } = await supabase
-    .from("enrollments")
-    .select(`
-      course_id,
-      courses ( title, description, instructor_id, thumbnail, price ),
-      progress: progress ( completion_percentage, status, updated_at )
-    `)
-    .eq("user_id", user.id);
+    routeUserByRole();
+  }, [router]);
 
   return (
-    <ProtectedRoute>
-      {userRole === "instructor" ? (
-        <InstructorDashboard 
-          user={user} 
-          stats={instructorStats} 
-          userName={fullName} 
-          initialCourses={instructorCourses} // Pass the courses here!
-        />
-      ) : (
-        <StudentDashboard enrollments={enrollments} />
-      )}
-    </ProtectedRoute>
+    <div className="h-[60vh] flex flex-col items-center justify-center">
+      <Spinner />
+      <p className="text-xs font-bold text-slate-400 mt-3 tracking-wider uppercase">Loading your personalized dashboard...</p>
+    </div>
   );
 }
