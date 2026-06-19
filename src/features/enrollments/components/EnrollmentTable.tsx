@@ -98,7 +98,7 @@ export default function EnrollmentTable() {
                     req.status === "approved" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
                     req.status === "rejected" ? "bg-rose-50 text-rose-600 border border-rose-100" :
                     "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
-                  }`}>
+                  }}`}>
                     {req.status}
                   </span>
                 </td>
