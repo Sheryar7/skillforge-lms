@@ -3,7 +3,7 @@ import React from 'react';
 export default function FeedbackPage() {
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1>Course Feedback</h1>
+      <h1>SkillForge LMS Feedback Forum</h1>
       <p>Welcome to the SkillForge LMS feedback page. Please leave your review below.</p>
       <textarea 
         placeholder="Type your feedback here..." 
