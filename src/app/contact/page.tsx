@@ -3,7 +3,7 @@ import React from 'react';
 export default function ContactPage() {
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif', color: '#fff', maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={{ borderBottom: '2px solid #333', paddingBottom: '10px' }}>Contact SkillForge Support</h1>
+      <h1 style={{ borderBottom: '2px solid #333', paddingBottom: '10px' }}>Get in Touch with SkillForge</h1>
       <p style={{ color: '#aaa', marginBottom: '20px' }}>
         Have questions about the LMS platform or need technical assistance? Drop us a message below and our team will get back to you.
       </p>
